@@ -31,9 +31,8 @@ func (this *FakeUserAPI) genFakeData() {
 
 func (this *FakeUserAPI) Login(username, password string) (*models.Session, error) {
 	time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
-	for i, v := range this.users {
+	for _, v := range this.users {
 		if v.Username == username && v.Password == password {
-			this.users[i].IsLogin = true
 			return &models.Session{
 				Username:  username,
 				ExpiredAt: time.Now().Unix() + int64(12*time.Hour),
