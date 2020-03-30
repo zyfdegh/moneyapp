@@ -19,4 +19,4 @@ $ git clone https://github.com/zyfdegh/moneyapp
 $ go run .
 ```
 
-[Go 新人具体步骤](https://github.com/zyfdegh/moneyapp/raw/master/README_BEGINER.md)
+[Go 新人具体步骤](https://github.com/zyfdegh/moneyapp/blob/master/README_BEGINER.md)
