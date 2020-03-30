@@ -13,7 +13,7 @@ var (
 )
 
 type FakeUserAPI struct {
-	users []models.User
+	users []*models.User
 }
 
 func NewFakeUserAPI() *FakeUserAPI {
@@ -23,10 +23,10 @@ func NewFakeUserAPI() *FakeUserAPI {
 }
 
 func (this *FakeUserAPI) genFakeData() {
-	this.users = append(this.users, models.User{Username: "1", Password: "1"})
-	this.users = append(this.users, models.User{Username: "admin", Password: "admin"})
-	this.users = append(this.users, models.User{Username: "zyf", Password: "111111"})
-	this.users = append(this.users, models.User{Username: "qhw", Password: "111111"})
+	this.users = append(this.users, &models.User{Username: "1", Password: "1"})
+	this.users = append(this.users, &models.User{Username: "admin", Password: "admin"})
+	this.users = append(this.users, &models.User{Username: "zyf", Password: "111111"})
+	this.users = append(this.users, &models.User{Username: "qhw", Password: "111111"})
 }
 
 func (this *FakeUserAPI) Login(username, password string) (*models.Session, error) {
@@ -40,6 +40,19 @@ func (this *FakeUserAPI) Login(username, password string) (*models.Session, erro
 		}
 	}
 	return nil, ErrAuthfailed
+}
+
+func (this *FakeUserAPI) Register(u *models.User) error {
+	if err := u.VerifyNewAccount(); err != nil {
+		return err
+	}
+	for _, v := range this.users {
+		if v.Username == u.Username {
+			return errors.New("相同用户名已存在")
+		}
+	}
+	this.users = append(this.users, u)
+	return nil
 }
 
 func (this *FakeUserAPI) Logout(username, password string) {

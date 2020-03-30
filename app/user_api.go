@@ -6,4 +6,5 @@ import (
 
 type UserAPI interface {
 	Login(username, password string) (*models.Session, error)
+	Register(u *models.User) error
 }

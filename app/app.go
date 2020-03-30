@@ -1,8 +1,8 @@
 package app
 
 import (
+	"errors"
 	"log"
-	"net/url"
 	"os"
 
 	"fyne.io/fyne"
@@ -43,8 +43,9 @@ func (this *App) Run() {
 
 func (this *App) launchMainPanel() {
 	main := this.app.NewWindow(consts.AppName)
+	welcomeTab := this.welcomeTab(main)
 	tabs := widget.NewTabContainer(
-		widget.NewTabItemWithIcon("主页", theme.HomeIcon(), this.welcomeTab(main)),
+		widget.NewTabItemWithIcon("主页", theme.HomeIcon(), welcomeTab),
 		widget.NewTabItemWithIcon("记账", theme.DocumentCreateIcon(), this.writeTab(main)),
 		widget.NewTabItemWithIcon("查账", theme.SearchIcon(), this.queryTab(main)),
 		widget.NewTabItemWithIcon("我的", theme.HomeIcon(), this.myTab(main)),
@@ -54,17 +55,20 @@ func (this *App) launchMainPanel() {
 	main.SetContent(tabs)
 	main.CenterOnScreen()
 	main.SetMaster()
+	main.Hide()
 	// TODO load session from prefrence
 	if this.session == nil {
 		// 登录
-		main.Hide()
-		this.launchLoginPanel(main)
+		go func() {
+			this.launchSigninPanel(main)
+			welcomeTab.Refresh()
+		}()
 	}
 	main.ShowAndRun()
 }
 
-func (this *App) launchLoginPanel(father fyne.Window) {
-	win := this.app.NewWindow(consts.AppName)
+func (this *App) launchSigninPanel(parent fyne.Window) {
+	win := this.app.NewWindow("登录")
 
 	username := widget.NewEntry()
 	username.SetPlaceHolder("输入账号")
@@ -80,7 +84,7 @@ func (this *App) launchLoginPanel(father fyne.Window) {
 			if len(username.Text) == 0 || len(password.Text) == 0 {
 				return
 			}
-			log.Println("[Login] Name:", username.Text)
+			log.Println("[Signin] Name:", username.Text)
 			prog := dialog.NewProgressInfinite("登录中", "请稍后...", win)
 			prog.Show()
 
@@ -93,7 +97,7 @@ func (this *App) launchLoginPanel(father fyne.Window) {
 			// TODO store session to prefrence
 			this.session = sess
 			win.Close()
-			father.Show()
+			parent.Show()
 		},
 	}
 	loginForm.Append("用户名：", username)
@@ -101,9 +105,16 @@ func (this *App) launchLoginPanel(father fyne.Window) {
 
 	win.CenterOnScreen()
 	win.SetContent(widget.NewVBox(
-		widget.NewLabel("欢迎使用"+consts.AppName+"，请登录"),
+		widget.NewLabel("你好，请登录"),
 		layout.NewSpacer(),
 		loginForm,
+		widget.NewHBox(
+			widget.NewLabel("尚无账号?点此"),
+			widget.NewButton("注册", func() {
+				win.Hide()
+				this.launchSignupPanel(win)
+			}),
+		),
 		layout.NewSpacer(),
 		widget.NewButton("退出", func() {
 			this.app.Quit()
@@ -112,41 +123,92 @@ func (this *App) launchLoginPanel(father fyne.Window) {
 	win.Show()
 }
 
-func (this *App) welcomeTab(father fyne.Window) fyne.CanvasObject {
-	link, err := url.Parse("https://fyne.io/")
-	if err != nil {
-		fyne.LogError("Could not parse URL", err)
+func (this *App) launchSignupPanel(parent fyne.Window) {
+	win := this.app.NewWindow("注册")
+
+	username := widget.NewEntry()
+	username.SetPlaceHolder("数字、字母、下划线")
+	password := widget.NewPasswordEntry()
+	password.SetPlaceHolder("数字、字母，符号，6位以上")
+	passwordTwice := widget.NewPasswordEntry()
+	passwordTwice.SetPlaceHolder("再输入一次")
+	realname := widget.NewEntry()
+	realname.SetPlaceHolder("张三")
+	cellphone := widget.NewEntry()
+	cellphone.SetPlaceHolder("手机号")
+
+	signupForm := &widget.Form{
+		OnCancel: func() {
+			username.SetText("")
+			password.SetText("")
+			passwordTwice.SetText("")
+			realname.SetText("")
+			cellphone.SetText("")
+		},
+		OnSubmit: func() {
+			if len(username.Text) == 0 || len(password.Text) == 0 {
+				return
+			}
+			if password.Text != passwordTwice.Text {
+				err := errors.New("两次密码不一样")
+				dialog.ShowError(err, win)
+				return
+			}
+			log.Println("[Signup] Name:", username.Text)
+			prog := dialog.NewProgressInfinite("注册中", "请稍后...", win)
+			prog.Show()
+
+			err := this.userApi.Register(&models.User{
+				Username: username.Text,
+				Password: password.Text,
+				Realname: realname.Text,
+				Cellphone: cellphone.Text,
+			})
+			if err != nil {
+				prog.Hide()
+				dialog.ShowError(err, win)
+				return
+			}
+			win.Close()
+			parent.Show()
+		},
 	}
+	signupForm.Append("用户名：", username)
+	signupForm.Append("密码：", password)
+	signupForm.Append("密码再输一次：", passwordTwice)
+	signupForm.Append("真实姓名：", realname)
+	signupForm.Append("手机号：", cellphone)
 
+	win.CenterOnScreen()
+	win.SetContent(widget.NewVBox(
+		widget.NewLabel("你好，注册新帐号"),
+		layout.NewSpacer(),
+		signupForm,
+	))
+	win.Show()
+}
+
+func (this *App) welcomeTab(parent fyne.Window) fyne.CanvasObject {
+	username := "游客"
+	if this.session != nil && len(this.session.Username) > 0 {
+		username = this.session.Username
+	}
 	return widget.NewVBox(
-		widget.NewLabelWithStyle("Welcome to the Fyne toolkit demo app", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle(username+", 欢迎使用"+consts.AppName, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
-		widget.NewHyperlinkWithStyle("fyne.io", link, fyne.TextAlignCenter, fyne.TextStyle{}),
-		layout.NewSpacer(),
-
-		widget.NewGroup("Theme",
-			fyne.NewContainerWithLayout(layout.NewGridLayout(2),
-				widget.NewButton("Dark", func() {
-					this.app.Settings().SetTheme(theme.DarkTheme())
-				}),
-				widget.NewButton("Light", func() {
-					this.app.Settings().SetTheme(theme.LightTheme())
-				}),
-			),
-		),
 	)
 }
 
-func (this *App) writeTab(father fyne.Window) fyne.CanvasObject {
+func (this *App) writeTab(parent fyne.Window) fyne.CanvasObject {
 	return widget.NewVBox()
 }
-func (this *App) queryTab(father fyne.Window) fyne.CanvasObject {
+func (this *App) queryTab(parent fyne.Window) fyne.CanvasObject {
 	return widget.NewVBox()
 }
 
-func (this *App) myTab(father fyne.Window) fyne.CanvasObject {
+func (this *App) myTab(parent fyne.Window) fyne.CanvasObject {
 	return widget.NewVBox()
 }
-func (this *App) aboutTab(father fyne.Window) fyne.CanvasObject {
+func (this *App) aboutTab(parent fyne.Window) fyne.CanvasObject {
 	return widget.NewVBox()
 }
