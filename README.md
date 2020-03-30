@@ -1,8 +1,8 @@
 # 简单财务管理 GUI
 
-![登录截图](https://github.com/zyfdegh/moneyapp/raw/master/screenshots/signin.md)
+![登录截图](https://raw.githubusercontent.com/zyfdegh/moneyapp/master/screenshots/signin.png)
 
-![注册截图](https://github.com/zyfdegh/moneyapp/raw/master/screenshots/signup.md)
+![注册截图](https://raw.githubusercontent.com/zyfdegh/moneyapp/master/screenshots/signin.png)
 
 ```
 Go 1.12+
