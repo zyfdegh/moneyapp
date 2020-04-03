@@ -20,3 +20,6 @@ $ go run .
 ```
 
 [Go 新人具体步骤](https://github.com/zyfdegh/moneyapp/blob/master/README_BEGINER.md)
+
+# LICENSE
+MIT

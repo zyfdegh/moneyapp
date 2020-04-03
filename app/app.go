@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"time"
 
 	"fyne.io/fyne"
 	"fyne.io/fyne/app"
@@ -15,6 +16,11 @@ import (
 	"github.com/zyfdegh/moneyapp/consts"
 	"github.com/zyfdegh/moneyapp/models"
 	"github.com/zyfdegh/moneyapp/services"
+)
+
+var (
+	// shared panels, lables, windows
+	sharedUsernameLabel = widget.NewLabelWithStyle("游客", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 )
 
 func init() {
@@ -60,8 +66,10 @@ func (this *App) launchMainPanel() {
 	if this.session == nil {
 		// 登录
 		go func() {
+			// 防止子窗口比父窗口先初始化，会报错
+			// 400ms 是因为某本书里说这是用户觉得 “不慢” 的上限
+			time.Sleep(400 * time.Millisecond)
 			this.launchSigninPanel(main)
-			welcomeTab.Refresh()
 		}()
 	}
 	main.ShowAndRun()
@@ -81,6 +89,10 @@ func (this *App) launchSigninPanel(parent fyne.Window) {
 			password.SetText("")
 		},
 		OnSubmit: func() {
+			defer func() {
+				win.Close()
+				parent.Show()
+			}()
 			if len(username.Text) == 0 || len(password.Text) == 0 {
 				return
 			}
@@ -96,8 +108,9 @@ func (this *App) launchSigninPanel(parent fyne.Window) {
 			}
 			// TODO store session to prefrence
 			this.session = sess
-			win.Close()
-			parent.Show()
+			// 更新主面板用户名
+			sharedUsernameLabel.SetText(username.Text)
+			sharedUsernameLabel.Refresh()
 		},
 	}
 	loginForm.Append("用户名：", username)
@@ -159,9 +172,9 @@ func (this *App) launchSignupPanel(parent fyne.Window) {
 			prog.Show()
 
 			err := this.userApi.Register(&models.User{
-				Username: username.Text,
-				Password: password.Text,
-				Realname: realname.Text,
+				Username:  username.Text,
+				Password:  password.Text,
+				Realname:  realname.Text,
 				Cellphone: cellphone.Text,
 			})
 			if err != nil {
@@ -189,12 +202,12 @@ func (this *App) launchSignupPanel(parent fyne.Window) {
 }
 
 func (this *App) welcomeTab(parent fyne.Window) fyne.CanvasObject {
-	username := "游客"
 	if this.session != nil && len(this.session.Username) > 0 {
-		username = this.session.Username
+		sharedUsernameLabel.SetText(this.session.Username)
 	}
 	return widget.NewVBox(
-		widget.NewLabelWithStyle(username+", 欢迎使用"+consts.AppName, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
+		sharedUsernameLabel,
+		widget.NewLabelWithStyle(", 欢迎使用"+consts.AppName, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
 		layout.NewSpacer(),
 	)
 }
